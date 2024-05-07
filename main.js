@@ -3,7 +3,7 @@
 import Web3 from "web3";
 import { config as configureDotenv } from "dotenv";
 import { ethers } from "ethers";
-import TelegramBot from "node-telegram-bot-api";
+// import TelegramBot from "node-telegram-bot-api";
 import { isContractVerified } from "./abi.js"; //import Function
 import * as factoryABI from "./uniswap_factory_abi.json" assert { type: "json" };//json object
 import * as erc20Abi from "./erc20Abi.json" assert { type: "json" };//json object
@@ -12,12 +12,12 @@ configureDotenv({ path: "./file.env" });
 const webSocketEndPointUrl = process.env.BASE_ENDPOINT;
 const httpEndPointUrl = process.env.BASE_HTTP_PROVIDER;
 const UniswapV2FActoryAddr = process.env.UNISWAP_V2_FACTORY_ADDRESS;
-const token = process.env.BOT_TOKEN;
+// const token = process.env.BOT_TOKEN;
 // const chadId = process.env.CHAT_ID;
 const webSocketProvider = new Web3.providers.WebsocketProvider(
   webSocketEndPointUrl
 );
-const bot = new TelegramBot(token, { polling: true });
+// const bot = new TelegramBot(token, { polling: true });
 const web3 = new Web3(webSocketProvider);
 const customHttpProvider = new ethers.JsonRpcProvider(httpEndPointUrl);
 const factoryContract = new web3.eth.Contract(
@@ -54,8 +54,6 @@ async function getTotalSupply(tContract) {
     const tokenSupply = ethers.formatUnits(totalSupplyBigNumber, 18);
 
     const strippedTokenSupply = parseInt(tokenSupply);
-
-    // console.log(`Total supply: ${strippedTokenSupply}`);
     return strippedTokenSupply;
   } catch (error) {
     console.error("Error fetching total supply:", error);
@@ -168,13 +166,6 @@ async function subscribeToPairCreatedEvent() {
               liquidity         ${liquidity + symbol}\n
               marketCap         ${marketCap}ETH\n
               `;                
-              bot.on("message", msg => {
-                const chatId = msg.chat.id;
-                console.log("Received message:", msg.text);
-
-                // Reply to the message
-                bot.sendMessage(chatId, str);
-              });
               console.log(str);
               console.log(`..............................................`);
               }
