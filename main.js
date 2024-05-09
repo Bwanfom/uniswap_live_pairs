@@ -3,7 +3,7 @@
 import Web3 from "web3";
 import { config as configureDotenv } from "dotenv";
 import { ethers } from "ethers";
-// import TelegramBot from "node-telegram-bot-api";
+import { Telegraf } from "telegraf";
 import { isContractVerified } from "./abi.js"; //import Function
 import * as factoryABI from "./uniswap_factory_abi.json" assert { type: "json" };//json object
 import * as erc20Abi from "./erc20Abi.json" assert { type: "json" };//json object
@@ -12,8 +12,9 @@ configureDotenv({ path: "./file.env" });
 const webSocketEndPointUrl = process.env.BASE_ENDPOINT;
 const httpEndPointUrl = process.env.BASE_HTTP_PROVIDER;
 const UniswapV2FActoryAddr = process.env.UNISWAP_V2_FACTORY_ADDRESS;
-// const token = process.env.BOT_TOKEN;
-// const chadId = process.env.CHAT_ID;
+const token = process.env.BOT_TOKEN;
+const botChadId = process.env.BOT_CHAT_ID;
+const channelId = '@newpairs_base';
 const webSocketProvider = new Web3.providers.WebsocketProvider(
   webSocketEndPointUrl
 );
@@ -24,6 +25,7 @@ const factoryContract = new web3.eth.Contract(
   factoryABI.default,
   UniswapV2FActoryAddr
 );
+const bot = new Telegraf(token);
 
 webSocketProvider.on("connect", () => {
   console.log(`Connected to WebSocket provider`);
@@ -151,23 +153,12 @@ async function subscribeToPairCreatedEvent() {
                 isVerified &&
                 liquidity >= erc20TokenPercent &&
                 marketCap >= 0.2 &&
-                marketCap <= 11
+                marketCap <= 11 && totalSupply !== 0
               ) {
               const str = `
-              Name:             ${name}  (${symbol})\n
-              CA:               ${token1Address}\n 
-              Token Supply:     ${totalSupply}\n 
-              Deployer Address: ${deployerAddress}\n 
-              Pair Address:     ${pair}\n 
-              Dev holds:        ${
-                isNaN(devHolding) ? 0 : parseInt(devHolding) + "%"
-              } of tokens supply\n 
-              DexScreener:      ${"https://dexscreener.com/base/" + pair}\n
-              liquidity         ${liquidity + symbol}\n
-              marketCap         ${marketCap}ETH\n
-              `;                
-              console.log(str);
-              console.log(`..............................................`);
+              Name: ${name}  (${symbol})\nCA: ${token1Address}\nToken Supply: ${totalSupply}\nDeployer Address: ${deployerAddress}\n Pair Address: ${pair}\nDev holds: ${isNaN(devHolding) ? 0 + '%': parseInt(devHolding) + "%"} of tokens supply\n DexScreener: ${"https://dexscreener.com/base/" + pair}\nliquidity: ${liquidity + ' ' +symbol}\nmarketCap: ${marketCap} ETH\n
+              `;
+              bot.telegram.sendMessage(channelId, str)  
               }
                 } else return;
             })();
@@ -186,3 +177,4 @@ async function subscribeToPairCreatedEvent() {
   }
 }
 subscribeToPairCreatedEvent();
+bot.launch()
