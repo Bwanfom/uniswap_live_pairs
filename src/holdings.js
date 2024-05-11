@@ -6,9 +6,11 @@ import { getTotalSupply } from './totalSupply.js'; //import function
 import { ethers } from 'ethers';
 import * as erc20Abi from "../abi/erc20Abi.json" assert { type: "json" };//json object
 import { config as configureDotenv } from 'dotenv';
+
 configureDotenv({ path: '../private/file.env' });
 const key = process.env.CHAINBASE_KEY;
-const token = process.env.T_HOLDER_BOT;
+const token = process.env.BOT_TOKEN;
+const chatId = process.env.BOT_CHAT_ID;
 const httpEndPointUrl = process.env.BASE_HTTP_PROVIDER;
 const bot = new Telegraf(token);
 const chainId = 8453;
@@ -40,31 +42,33 @@ export async function getTokenHolders(contractAddress, limit) {
   }
 }
 
-let top10HoldersData = null;
-(async function retrieveTop10Holders(
-  tokenAddress = '0x4f2961458220a71ed4f84098cf8681d552AfB5C0'
-) {
+const limit = 10;
+bot.hears(/^\/(0x[0-9a-fA-F]{40})$/, async ctx => {
+  const chatId = ctx.chat.id;
+  const address = ctx.match[1];
   const tokenContract = new ethers.Contract(
-    tokenAddress,
+    address,
     erc20Abi.default,
     customHttpProvider
   );
   const totalSupply = await getTotalSupply(tokenContract);
-  // console.log(totalSupply);
   let retry = 0;
   const retryCount = 3;
   while (retry < retryCount) {
     try {
-      const data = await getTokenHolders(tokenAddress, 50); //2 params, contract address && limit count || how many holders to get
-      if (data && data.data) {
-        top10HoldersData = data.data.map(holder => {
+      // get token holders function
+      const data = await getTokenHolders(address, limit);
+      if (data && data.data && data.data.length > 1) {
+        const sortedData = data.data.sort((a, b) => b.amount - a.amount); // Sort data in descending order
+        const topHolders = sortedData.slice(0, limit); // Get top holders based on the limit
+        for (const holder of topHolders) {
           const balancePercentage = (holder.amount / totalSupply) * 100;
-          console.log(
-            `${holder.wallet_address}, ${parseFloat(
-              holder.amount
-            ).toFixed()}, out of TS: ${balancePercentage.toFixed(2)}%`
-          );
-        });
+          const str = `totalSupply: ${parseFloat(totalSupply).toFixed() }\n ${holder.wallet_address}\n amount: ${parseFloat(
+            holder.amount
+          ).toFixed()} ${balancePercentage.toFixed(2)}%`;
+          console.log(str);
+          await bot.telegram.sendMessage(chatId, str); // Wait for each message to be sent
+        }
         return;
       } else return;
     } catch (error) {
@@ -73,13 +77,9 @@ let top10HoldersData = null;
       if (retry === retryCount) {
         console.error('Max retry count reached');
       }
+      
     }
-  }
-})();
-// console.log(
-//             `Amount: ${parseFloat(
-//               holder.amount
-//             ).toFixed()} Address: ${'https://basescan.org/address/' +
-//               holder.wallet_address}`
-//           );
-// 'https://basescan.org/address/' +
+    break;
+    }
+});
+bot.launch();
