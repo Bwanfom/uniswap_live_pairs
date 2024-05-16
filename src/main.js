@@ -1,5 +1,6 @@
 'use strict';
 
+import { HoneypotIsV1 } from '@normalizex/honeypot-is';
 import Web3 from "web3";
 import { config as configureDotenv } from "dotenv";
 import { ethers } from "ethers";
@@ -18,7 +19,6 @@ const channelId = '@newpairs_base';
 const webSocketProvider = new Web3.providers.WebsocketProvider(
   webSocketEndPointUrl
 );
-// const bot = new TelegramBot(token, { polling: true });
 const web3 = new Web3(webSocketProvider);
 const customHttpProvider = new ethers.JsonRpcProvider(httpEndPointUrl);
 const factoryContract = new web3.eth.Contract(
@@ -79,80 +79,105 @@ async function subscribeToPairCreatedEvent() {
               customHttpProvider
             );
             //fetch token total supply function, called with token contract address
-            const totalSupply = await getTotalSupply(tokenContract);
-            // function to fetch dev token balance
-            async function checkDeployerAddr(deployerAddress) {
-              try {
-                const balance = await tokenContract.balanceOf(deployerAddress);
-                const value = ethers.formatEther(balance);
-                return value;
-              } catch (err) {
-                console.error('Error fetching token balance:', err);
-              }
-            }
-            //dev tokens amount
-            const devTokenBal = await checkDeployerAddr(deployerAddress);
-            // Calculate dev total holdings of supply
-            const devHolding = (devTokenBal / totalSupply) * 100;
-            //name && symbol
-            const name = await tokenContract.name();
-            const symbol = await tokenContract.symbol();
-            const privKey = process.env.WALLET_PRIVATE_KEY;
-            const wallet = new ethers.Wallet(privKey, customHttpProvider);
-            // Get the signer from the wallet
-            const signer = wallet.connect(customHttpProvider);
-            const abi = [
-              'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)'
-            ];
-            const factoryContract0 = new ethers.Contract(
-              UniswapV2FActoryAddr,
-              [
-                'event PairCreated(address indexed token0, address indexed token1,address pair, uint)',
-                'function getPair(address tokenA, address tokenB) external view returns (address pair)',
-                'function balanceOf(address owner) external view returns (uint)',
-                'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)'
-              ],
-              signer
-            );
-            const pairAddress0 = await factoryContract0.getPair(
-              specificAddr,
-              token1Address
-            );
-            const pairContract = new ethers.Contract(
-              pairAddress0,
-              abi,
-              customHttpProvider
-            );
-            const reserves = await pairContract.getReserves();
-            const reserve_0 = await reserves.reserve0;
-            const marketCap = web3.utils.fromWei(reserve_0, 'ether');
-            const reserve_1 = await reserves.reserve1;
-            const liquidity = web3.utils.fromWei(reserve_1, 'ether');
-            const erc20TokenPercent = totalSupply * 0.7;
-
-            (async () => {
-              const isVerified = await isContractVerified(token1Address);
-              if (reserves !== null) {
-                if (
-                  isVerified &&
-                  liquidity >= erc20TokenPercent &&
-                  marketCap >= 0.2 &&
-                  marketCap <= 11 &&
-                  totalSupply !== 0
-                ) {
-                  const str = `
-              Name: ${name}  (${symbol})\nCA: ${token1Address}\nToken Supply: ${totalSupply}\nDeployer Address: ${deployerAddress}\n Pair Address: ${pair}\nDev holds: ${
-                    isNaN(devHolding)
-                      ? 0 + '%'
-                      : parseInt(devHolding.toFixed(3)) + '%'
-                  } of tokens supply\n DexScreener: ${'https://dexscreener.com/base/' +
-                    pair}\nliquidity: ${parseFloat(liquidity).toFixed(4)  +
-                    ' ' +
-                    symbol}\nmarketCap: ${marketCap} ETH\n`;
-                  bot.telegram.sendMessage(channelId, str);
+            try {
+              const totalSupply = await getTotalSupply(tokenContract);
+              // function to fetch dev token balance
+              async function checkDeployerAddr(deployerAddress) {
+                try {
+                  const balance = await tokenContract.balanceOf(
+                    deployerAddress
+                  );
+                  const value = ethers.formatEther(balance);
+                  return value;
+                } catch (err) {
+                  console.error('Error fetching token balance:', err);
                 }
-              } else return;
-            })();
+              }
+              //dev tokens amount
+              const devTokenBal = await checkDeployerAddr(deployerAddress);
+              // Calculate dev total holdings of supply
+              const devHolding = (devTokenBal / totalSupply) * 100;
+              //name && symbol
+              const name = await tokenContract.name();
+              const symbol = await tokenContract.symbol();
+              const privKey = process.env.WALLET_PRIVATE_KEY;
+              const wallet = new ethers.Wallet(privKey, customHttpProvider);
+              // Get the signer from the wallet
+              const signer = wallet.connect(customHttpProvider);
+              const abi = [
+                'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)'
+              ];
+              const factoryContract0 = new ethers.Contract(
+                UniswapV2FActoryAddr,
+                [
+                  'event PairCreated(address indexed token0, address indexed token1,address pair, uint)',
+                  'function getPair(address tokenA, address tokenB) external view returns (address pair)',
+                  'function balanceOf(address owner) external view returns (uint)',
+                  'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)'
+                ],
+                signer
+              );
+              const pairAddress0 = await factoryContract0.getPair(
+                specificAddr,
+                token1Address
+              );
+              const pairContract = new ethers.Contract(
+                pairAddress0,
+                abi,
+                customHttpProvider
+              );
+              const reserves = await pairContract.getReserves();
+              const reserve_0 = await reserves.reserve0;
+              const marketCap = web3.utils.fromWei(reserve_0, 'ether');
+              const reserve_1 = await reserves.reserve1;
+              const liquidity = web3.utils.fromWei(reserve_1, 'ether');
+              const erc20TokenPercent = totalSupply * 0.7;
+              const CHAIN_ID = 8453;
+              const honeypotis = new HoneypotIsV1();
+
+              try {
+                const PAIRS = await honeypotis.getPairs(
+                  token1Address,
+                  CHAIN_ID
+                );
+                const req = await honeypotis.honeypotScan(
+                  address,
+                  PAIRS[0].Router,
+                  PAIRS[0].Pair,
+                  CHAIN_ID
+                );
+                const res = req;
+                (async () => {
+                  const isVerified = await isContractVerified(token1Address);
+                  if (reserves !== null) {
+                    if (
+                      isVerified &&
+                      liquidity >= erc20TokenPercent &&
+                      marketCap >= 0.2 &&
+                      marketCap <= 15 &&
+                      totalSupply !== 0
+                    ) {
+                      if (res.IsHoneypot !== true && devHolding !== 0) {
+                        const str = `
+              Name: ${name}  (${symbol})\nCA: ${token1Address}\nToken Supply: ${totalSupply}\nDeployer Address: ${deployerAddress}\n Pair Address: ${pair}\nDev holds: ${
+                          isNaN(devHolding)
+                            ? 0 + '%'
+                            : parseInt(devHolding.toFixed(3)) + '%'
+                        } of tokens supply\n DexScreener: ${'https://dexscreener.com/base/' +
+                          pair}\nliquidity: ${parseFloat(liquidity).toFixed(4) +
+                          ' ' +
+                          symbol}\nmarketCap: ${marketCap} ETH\n`;
+                        bot.telegram.sendMessage(channelId, str);
+                      }
+                    }
+                  } else return;
+                })();
+              } catch (err) {
+                return;
+              }
+            } catch (err) {
+              return;
+            }
           }
         }
       });

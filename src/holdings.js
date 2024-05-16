@@ -9,14 +9,12 @@ import { config as configureDotenv } from 'dotenv';
 
 configureDotenv({ path: '../private/file.env' });
 const key = process.env.CHAINBASE_KEY;
-const token = process.env.BOT_TOKEN;
-const chatId = process.env.BOT_CHAT_ID;
+const token = process.env.HOLDERS_CHECKER;
 const httpEndPointUrl = process.env.BASE_HTTP_PROVIDER;
 const bot = new Telegraf(token);
 const chainId = 8453;
 const customHttpProvider = new ethers.JsonRpcProvider(httpEndPointUrl);
 export async function getTokenHolders(contractAddress, limit) {
-  // Get token holders
   try {
     if (!key) {
       throw new Error('base chain key variable not set');
@@ -43,7 +41,7 @@ export async function getTokenHolders(contractAddress, limit) {
 }
 
 const limit = 10;
-bot.hears(/^\/(0x[0-9a-fA-F]{40})$/, async ctx => {
+bot.hears(/^\/h (0x[0-9a-fA-F]{40})$/, async ctx => {
   const chatId = ctx.chat.id;
   const address = ctx.match[1];
   const tokenContract = new ethers.Contract(
@@ -56,18 +54,16 @@ bot.hears(/^\/(0x[0-9a-fA-F]{40})$/, async ctx => {
   const retryCount = 3;
   while (retry < retryCount) {
     try {
-      // get token holders function
-      const data = await getTokenHolders(address, limit);
+      const data = await getTokenHolders(address, limit);// get token holders function
       if (data && data.data && data.data.length > 1) {
         const sortedData = data.data.sort((a, b) => b.amount - a.amount); // Sort data in descending order
         const topHolders = sortedData.slice(0, limit); // Get top holders based on the limit
         for (const holder of topHolders) {
           const balancePercentage = (holder.amount / totalSupply) * 100;
-          const str = `totalSupply: ${parseFloat(totalSupply).toFixed() }\n ${holder.wallet_address}\n amount: ${parseFloat(
+          const str = `\n${holder.wallet_address}\nAmount: ${parseFloat(
             holder.amount
           ).toFixed()} ${balancePercentage.toFixed(2)}%`;
-          console.log(str);
-          await bot.telegram.sendMessage(chatId, str); // Wait for each message to be sent
+          await bot.telegram.sendMessage(chatId, str); 
         }
         return;
       } else return;

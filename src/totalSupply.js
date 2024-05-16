@@ -9,5 +9,6 @@ export async function getTotalSupply(contractAddress) {
     return strippedTokenSupply;
   } catch (error) {
     console.error('Error fetching total supply:', error);
+    return;
   }
 }
