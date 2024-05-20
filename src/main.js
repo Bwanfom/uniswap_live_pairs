@@ -95,6 +95,7 @@ async function subscribeToPairCreatedEvent() {
               }
               //dev tokens amount
               const devTokenBal = await checkDeployerAddr(deployerAddress);
+
               // Calculate dev total holdings of supply
               const devHolding = (devTokenBal / totalSupply) * 100;
               //name && symbol
@@ -131,7 +132,7 @@ async function subscribeToPairCreatedEvent() {
               const marketCap = web3.utils.fromWei(reserve_0, 'ether');
               const reserve_1 = await reserves.reserve1;
               const liquidity = web3.utils.fromWei(reserve_1, 'ether');
-              const erc20TokenPercent = totalSupply * 0.7;
+              const erc20TokenPercent = totalSupply * 0.4;
               const CHAIN_ID = 8453;
               const honeypotis = new HoneypotIsV1();
 
@@ -149,26 +150,25 @@ async function subscribeToPairCreatedEvent() {
                 const res = req;
                 (async () => {
                   const isVerified = await isContractVerified(token1Address);
-                  if (reserves !== null) {
-                    if (
-                      isVerified &&
-                      liquidity >= erc20TokenPercent &&
-                      marketCap >= 0.2 &&
-                      marketCap <= 15 &&
-                      totalSupply !== 0
-                    ) {
-                      if (res.IsHoneypot !== true && devHolding !== 0) {
-                        const str = `
+                  if (
+                    reserves !== null &&
+                    isVerified 
+                  ) {
+                    //&& devHolding > 0.9 && devHolding < 51
+                    if (res.IsHoneypot !== true &&
+                    totalSupply > 0 &&
+                    liquidity >= erc20TokenPercent &&
+                    marketCap >= 0.2) {
+                      const str = `\n
               Name: ${name}  (${symbol})\nCA: ${token1Address}\nToken Supply: ${totalSupply}\nDeployer Address: ${deployerAddress}\n Pair Address: ${pair}\nDev holds: ${
-                          isNaN(devHolding)
-                            ? 0 + '%'
-                            : parseInt(devHolding.toFixed(3)) + '%'
-                        } of tokens supply\n DexScreener: ${'https://dexscreener.com/base/' +
-                          pair}\nliquidity: ${parseFloat(liquidity).toFixed(4) +
-                          ' ' +
-                          symbol}\nmarketCap: ${marketCap} ETH\n`;
-                        bot.telegram.sendMessage(channelId, str);
-                      }
+                        isNaN(devHolding)
+                          ? 0 + '%'
+                          : parseInt(devHolding.toFixed(3)) + '%'
+                      } of tokens supply\n DexScreener: ${'https://dexscreener.com/base/' +
+                        pair}\nliquidity: ${parseFloat(liquidity).toFixed(4) +
+                        ' ' +
+                        symbol}\nmarketCap: ${marketCap} ETH\n`;                      
+                      bot.telegram.sendMessage(channelId, str);
                     }
                   } else return;
                 })();
